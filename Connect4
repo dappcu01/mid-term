@@ -1,0 +1,167 @@
+#Create game called Connect 4
+import numpy as np
+import pygame
+import sys
+import math
+
+#1st Note: I use tabs to indent start of the line, and it's easier to read this way
+BLUE = (0,0,255)
+BLACK = (0,0,0)
+ORANGE = (255,165,0)
+GREEN = (0,255,0)
+
+ROW_COUNT = 6 #Capitalized charaters to say they're none changing variable
+COLUMN_COUNT = 7
+
+def create_board(): #creat board with matrix 6x7
+	board = np.zeros((ROW_COUNT,COLUMN_COUNT))
+	return board
+
+def drop_piece(board, row, col, piece):
+	board[row][col] = piece #fill in the board with pieces, '1' for player 1 and '2' for player 2
+
+def is_valid_location(board, col): #the matrix starts with all value = 0, so if i were to drop a piece all the way to the bottom, the value uptop must be = 0 in order for the piece to go down
+	return board[ROW_COUNT-1][col] == 0 #(ROW_COUNT-1)~The last index in ROW_COUNT
+
+def get_next_open_row(board, col):
+	for r in range(ROW_COUNT): #r count from 0 to (ROW_COUNT-1)
+		if board[r][col] == 0: #if in   0  0  0  0  0  0  0  , we fill up the bottom 3 rows with 1's and 2's, but if one spot in row 4 says matrix[4][1]=0 then that means the spot is empty still
+#										0  0  0  0  0  0  0  
+#										0  0  0  0  0  0  0  
+#										0  0  0  0  0  0  0  
+#										0  0  0  0  0  0  0  
+#										0  0  0  0  0  0  0 
+			return r
+
+def print_board(board): #in numpy, matrix[0][0] is in 1st row and column, we want that at the bottom, which means upside down of the numpy, this print_board function created to do this
+	print(np.flip(board, 0)) #'0' as the access to flip the board
+
+def win_move(board, piece): #Check every possible horizontal, vertical, diagonal with four 1's or 2's, if True then Win
+	# Check horizontal locations for win
+	for c in range(COLUMN_COUNT-3): #Minus 3 because if we start from the fourth column and end in the left, then three column to the right couldn't actually work
+		for r in range(ROW_COUNT):
+			if board[r][c] == piece and board[r][c+1] == piece and board[r][c+2] == piece and board[r][c+3] == piece: #four pieces horizontally to win
+				return True
+
+	# Check vertical locations for win
+	for c in range(COLUMN_COUNT):
+		for r in range(ROW_COUNT-3): #Similar to horizontal explanation.
+			if board[r][c] == piece and board[r+1][c] == piece and board[r+2][c] == piece and board[r+3][c] == piece:
+				return True
+
+	# Check positively sloped diagonals
+	for c in range(COLUMN_COUNT-3):
+		for r in range(ROW_COUNT-3): #	0  0  0  0  0  0  0  #We cannot go any furthur than the number '1' to the upper right corner in the matrix.
+#										0  0  0  0  0  0  0  #So it's COLUMN_COUNT-3:from column contain 1 to the end of right side
+#										0  0  0  0  0  0  0  #and ROW_COUNT-3:the remain three upper rows
+#										0  0  0  1  0  0  0  
+#										0  0  0  0  0  0  0 
+#										0  0  0  0  0  0  0 
+			if board[r][c] == piece and board[r+1][c+1] == piece and board[r+2][c+2] == piece and board[r+3][c+3] == piece:
+				return True
+
+	# Check negatively sloped diagonals
+	for c in range(COLUMN_COUNT-3):
+		for r in range(3, ROW_COUNT): #	0  0  0  0  0  0  0 #Same for positively sloped diagonals but this time
+#										0  0  0  0  0  0  0 #'1' is in different position and wecannot go any furthur than the number '1' to the lower right corner in the matrix.
+#										0  0  0  1  0  0  0 #<--3rd row, explained for range(3, ROW_COUNT), so even it's 4th row, it's third in index
+#										0  0  0  0  0  0  0 #<--2nd row
+#										0  0  0  0  0  0  0 #<--1st row
+#										0  0  0  0  0  0  0 #<--0 row
+			if board[r][c] == piece and board[r-1][c+1] == piece and board[r-2][c+2] == piece and board[r-3][c+3] == piece:
+				return True
+
+#Implement graphics to Connect 4:
+def draw_board(board): #Draw the board with pygame graphics
+	for c in range(COLUMN_COUNT):
+		for r in range(ROW_COUNT):
+			pygame.draw.rect(screen, BLUE, (c*SQUARESIZE, r*SQUARESIZE+SQUARESIZE, SQUARESIZE, SQUARESIZE))
+			pygame.draw.circle(screen, BLACK, (int(c*SQUARESIZE+SQUARESIZE/2), int(r*SQUARESIZE+SQUARESIZE+SQUARESIZE/2)), RADIUS)
+
+	for c in range(COLUMN_COUNT):
+		for r in range(ROW_COUNT):		
+			if board[r][c] == 1: #Implement color ORANGE of where the numbe 1(Player 1) drop
+				pygame.draw.circle(screen, ORANGE, (int(c*SQUARESIZE+SQUARESIZE/2), height-int(r*SQUARESIZE+SQUARESIZE/2)), RADIUS)
+			elif board[r][c] == 2: 
+				pygame.draw.circle(screen, GREEN, (int(c*SQUARESIZE+SQUARESIZE/2), height-int(r*SQUARESIZE+SQUARESIZE/2)), RADIUS)
+	pygame.display.update() #Rerender the screen with the new changes
+
+
+board = create_board()
+print_board(board)
+game_over = False #become True when a player wins
+turn = 0 #differentiate player 2 from player 1
+
+pygame.init() #Initialize game
+
+SQUARESIZE = 100 #Sparesize is 100 pixels
+
+width = COLUMN_COUNT * SQUARESIZE
+height = (ROW_COUNT+1) * SQUARESIZE #One extra row on top to show where you gonna drop the ball
+
+size = (width, height)
+
+RADIUS = int(SQUARESIZE/2 - 4)
+
+screen = pygame.display.set_mode(size) #Command in order for pygame to read: size
+draw_board(board)
+pygame.display.update() #Enable us to see what we supposed to see
+
+myfont = pygame.font.SysFont("monospace", 72) #Style:monospace, space occupation:72
+
+while not game_over:
+
+	for event in pygame.event.get():
+		if event.type == pygame.QUIT:
+			sys.exit()
+
+		if event.type == pygame.MOUSEMOTION:
+			pygame.draw.rect(screen, BLACK, (0,0, width, SQUARESIZE)) #Position start at top left so (0,0), anywhere in the whole width of the screen and the height is SQUARESIZE
+			posx = event.pos[0] #position of wherever the mouse is
+			if turn == 0:
+				pygame.draw.circle(screen, ORANGE, (posx, int(SQUARESIZE/2)), RADIUS)
+			else: 
+				pygame.draw.circle(screen, GREEN, (posx, int(SQUARESIZE/2)), RADIUS)
+		pygame.display.update()
+
+		if event.type == pygame.MOUSEBUTTONDOWN:
+			pygame.draw.rect(screen, BLACK, (0,0, width, SQUARESIZE))
+			#print(event.pos)
+            
+			# Ask for Player 1 Input
+			if turn == 0: #player 1 turn
+				posx = event.pos[0]
+				col = int(math.floor(posx/SQUARESIZE))
+
+				if is_valid_location(board, col):
+					row = get_next_open_row(board, col)
+					drop_piece(board, row, col, 1)
+
+					if win_move(board, 1):
+						label = myfont.render("Player 1 wins", 1, ORANGE) #Display the line inform us that player 1 has won
+						screen.blit(label, (40,10))
+						game_over = True
+
+
+			# Ask for Player 2 Input
+			else: #Player 2 turn
+				posx = event.pos[0]
+				col = int(math.floor(posx/SQUARESIZE))
+
+				if is_valid_location(board, col):
+					row = get_next_open_row(board, col)
+					drop_piece(board, row, col, 2) #Notice piece=2 for player 2 to differentiate it from player 1 1's
+
+					if win_move(board, 2):
+						label = myfont.render("Player 2 wins", 1, GREEN)
+						screen.blit(label, (40,10))
+						game_over = True
+
+			print_board(board) #we also want to print out the board
+			draw_board(board)
+
+			turn += 1 #increment as for player 2's turn
+			turn = turn % 2 #alternate between player 1 and player 2's turn
+
+			if game_over: 
+				pygame.time.wait(3000) #Wait time so i don't automatically close the game right away but wait for in this case 3 seconds(which is 3000)
